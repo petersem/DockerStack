@@ -9,10 +9,10 @@
 # -----------------------------------------------------------------------------------------------------------------
 # 9443,980  - Nginx Proxy Manager         Reverse proxy app with LetsEncrypt included 
 #           - VPN                         OpenVpn client - used for torrent-related activities
-#           - VPNPrivoxy                  OpenVPN client - used for web proxy 'privoxy' for bypassing geo-block
+# 8118      - VPNPrivoxy                  OpenVPN client - used for web proxy 'privoxy' for bypassing geo-block
 # 5801      - filezilla                   FTP Client
 #           - Nginx                       Basic web server
-#           - LibreSpeed                  Server to device speed test utility
+# 8383      - LibreSpeed                  Server to device speed test utility
 # 80, 443   - Pi-Hole                     Ad blocker and DHCP
 #           - DuckDNS                     Dynamic DNS updater for DuckDNS
 #           - Privoxy                     Web proxy server, using VPNPrivoxy for accessing geo-blocked web sites
@@ -23,22 +23,22 @@
 #           - JellyFin                    Media server
 #           - jfa-go                      JellyFin managent tool
 #           - DizQtv                      Simulateds HDHomeRun device, but reads from selected Plex content
-#           - MovieMatch                  Allows user matching of movies to watch (think Tinder for movies)
+# 2001      - MovieMatch                  Allows user matching of movies to watch (think Tinder for movies)
 #           - Xteve                       Allows multiple TV guides to be consolidated into one 
 #           - Calibre-web                 E-book browsing and viewing
 #
 # Photo Management
 # -----------------------------------------------------------------------------------------------------------------
-# 980       - Pwigo                       Self-hosted image manager
+# 880       - Pwigo                       Self-hosted image manager
 #           - Lychee                      Photo manager
 #           - Photoshow                   Photo manager
 #           - Chevereto                   Stock image manager
 #
 # Collaboration and Synchronisation
 # -----------------------------------------------------------------------------------------------------------------
-#           - SyncThing                   Synchronisation of files between devices
+# 8384      - SyncThing                   Synchronisation of files between devices
 #           - TheLounge                   IRC Client
-#           - BookStack                   Shared documentation hub
+# 6875      - BookStack                   Shared documentation hub
 # 7777      - HasteBin                    Private PasteBin clone
 #
 # Media Gathering
@@ -48,11 +48,11 @@
 # 7879      - Radarr4k                    Search for 4k movies
 # 8686      - Lidarr                      Search for music
 # 8787      - Readarr                     Search for e-books
-#           - LazyLibrarian               Search for e-books and audio books
+# 5299      - LazyLibrarian               Search for e-books and audio books
 # 8080      - Sabnzbd                     Usenet downloader
 #           - Qbittorrent                 Torrent downloader
 #           - Jackett                     Presents an API-callable interface over a number of torrent sites
-#           - NzbHydra2                   NZB and Jacket aggregator
+# 5076      - NzbHydra2                   NZB and Jacket aggregator
 #           - Bazarr                      Downloads subtitles
 #           - OMBI                        End-user media requester
 #           - Tdarr                       Media conversion tool
@@ -73,7 +73,7 @@
 # 19999     - Netdata                     Monitors and presents graphs for system attributes
 #           - Monitrr                     Web page monitor
 #           - NextCloud                   Collaboration platform
-#           - HomeAssistant               Smart home monitoring and management
+# 8123      - HomeAssistant               Smart home monitoring and management
 # 8181      - Tautulli                    Plex monitoring and statistics
 #
 # Databases
@@ -84,7 +84,7 @@
 #
 # Programming
 # -----------------------------------------------------------------------------------------------------------------
-#           - Node-Red                    Develop code for linking smart devices
+# 1880      - Node-Red                    Develop code for linking smart devices
 #
 # Link / Page Organisation
 # -----------------------------------------------------------------------------------------------------------------
@@ -94,13 +94,15 @@
 # Information 
 # -----------------------------------------------------------------------------------------------------------------
 #           - FreshRSS                    RSS Feed
-#           - MagicMirror                 Magic mirror presentation software
+# 5555      - MagicMirror                 Magic mirror presentation software
 #
 # Gaming 
 # -----------------------------------------------------------------------------------------------------------------
 #           - OpenRA                      Open Red Alert game server
 #
 version: '2.4'
+
+# SERVICES ####################################################################################
 services:
 
   #
@@ -139,8 +141,8 @@ services:
       - MYSQL_DATABASE=piwigo
       - MYSQL_USER=piwigo
       - MYSQL_PASSWORD=piwigo
-    ports: 
-      - 3306:3306
+    expose: 
+      - 3306
     volumes:
       - $PERSIST/piwigodb:/var/lib/mysql
     restart: unless-stopped
@@ -148,137 +150,6 @@ services:
       - autoheal
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "--silent"]
-
-  #
-  # filezilla
-  #
-  filezilla:
-    image: jlesage/filezilla
-    container_name: filezilla
-    ports:
-      - 5801:5800
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/filezilla:/config:rw
-      - $MEDIA_PATH:/storage  
-    restart: unless-stopped
-
-  # 
-  # Lychee - photo management solution
-  # - no health check identified atm
-  #
-  lychee:
-    image: lycheeorg/lychee
-    container_name: lychee
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-      - DB_CONNECTION=mysql
-      - DB_HOST=lycheedb
-      - DB_PORT=3306
-      - DB_DATABASE=lychee
-      - DB_USERNAME=lychee
-      - DB_PASSWORD=lychee
-      - STARTUP_DELAY=60
-    volumes:
-      - $PERSIST/lychee/conf:/conf
-      - $PERSIST/lychee/uploads:/uploads
-      - $PERSIST/lychee/sym:/sym
-    ports:
-      - 90:80
-    restart: unless-stopped
-    depends_on:
-      lycheedb:
-        condition: service_healthy
-
-  lycheedb:
-    container_name: lychee_db
-    image: mariadb:10
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-      - MYSQL_ROOT_PASSWORD=lychee
-      - MYSQL_DATABASE=lychee
-      - MYSQL_USER=lychee
-      - MYSQL_PASSWORD=lychee
-    expose: 
-      - 3306
-    volumes:
-      - $PERSIST/lycheedb:/var/lib/mysql
-    restart: unless-stopped
-    labels:
-      - autoheal
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "--silent"]
-
-  #
-  # monitorr - basic web site monitor
-  # - no health check available atm
-  #
-  monitorr:
-    container_name: monitorr
-    image: index.docker.io/monitorr/monitorr
-    ports:
-      - "88:80/tcp"
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/monitorr:/app
-    restart: on-failure
-
-  tdarr:
-    image: index.docker.io/haveagitgat/tdarr
-    container_name: tdarr
-    ports:
-      -  8265:8265
-    labels: 
-      - autoheal=$AUTOHEAL_RESTART
-    healthcheck:
-      test: curl -fSs http://127.0.0.1:8265 || exit 1
-      start_period: 120s
-      timeout: 10s
-      interval: 5s
-      retries: 3
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/tdarr/data:/home/Tdarr/Documents/Tdarr
-      - $PERSIST/tdarr/data/db:/var/lib/mongodb
-      - $MEDIA_PATH:/home/Tdarr/media
-      - $PERSIST/tdarr/transcodecache:/home/Tdarr/cache
-      - /etc/localtime:/etc/localtime:ro
-    devices:
-      - "/dev/dri:/dev/dri"
-  
-  #
-  # organizr - link and page manager
-  #
-  organizr:
-    environment:
-      - HOME=/root
-      - TERM=xterm
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/organizr/config:/config:rw
-    container_name: organizr
-    ports:
-      - 5443:443
-      - 580:80
-    restart: 'on-failure:0'
-    entrypoint:
-      - /init
-    labels: 
-      - autoheal=$AUTOHEAL_RESTART
-    image: organizr/organizr
 
   nodered:
     image: nodered/node-red
@@ -301,57 +172,6 @@ services:
       retries: 3
     restart: unless-stopped
 
-  jfa-go:
-    image: hrfee/jfa-go
-    container_name: jfa-go
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/jfa-go:/data
-      - $PERSIST/jellyfin/config:/jf
-      - /etc/localtime:/etc/localtime:ro
-    ports:
-      - 8056:8056
-    restart: unless-stopped
-
-  #
-  # nginx - basic web server
-  # - no health check available atm
-  #
-  nginx:
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    ports:
-      - '6969:80'
-    container_name: nginx
-    volumes:
-      - $PERSIST/nginx/site-content:/usr/share/nginx/html
-      #- $PERSIST/nginx/nginx.conf /etc/nginx/conf.d/default.conf
-    image: nginx
-
-  overseerr:
-    container_name: overseerr
-    restart: unless-stopped
-    image: sctx/overseerr
-    ports:
-      - 5055:3000
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/overseerr:/app/config
-    labels: 
-      - autoheal=$AUTOHEAL_RESTART
-    healthcheck:
-      test: wget http://127.0.0.1:5055/api/v1/status -qO /dev/null || exit 1
-      interval: 5s
-      retries: 3
-
   #
   # moviematch - allows two or more people to select movies to watch on plex
   # - no health check available atm
@@ -363,7 +183,7 @@ services:
     ports:
       - 2001:8000
     environment:
-      - PLEX_TOKEN=$PLEX_TOKEN
+      - PLEX_TOKEN=$PLEX_TOKEN__SECRET
       - PLEX_URL=$PURL
       - LIBRARY_FILTER=$LIBFILTER
 #      - ROOT_PATH=/
@@ -373,24 +193,6 @@ services:
     depends_on:
       plex:
         condition: service_healthy
-
-  #
-  # Dashmachine -
-  # - no health check possible atm
-  #      
-  dashmachine:
-    container_name: dashmachine
-    restart: unless-stopped
-    image: rmountjoy/dashmachine
-    ports:
-      - 2000:5000
-    environment:
-      - CONTEXT_PATH=/
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/dashmachine:/dashmachine/dashmachine/user_data
 
   #
   # magic mirror - drives display for magic mirror projects
@@ -429,23 +231,6 @@ services:
       - 21027:21027/udp
     image: linuxserver/syncthing
     restart: unless-stopped
-
-  #
-  # freshrss - rss feed aggregator
-  # - no health check available atm
-  #
-  freshrss:
-    image: linuxserver/freshrss
-    container_name: freshrss
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/freshrss:/config
-    ports:
-      - 8585:80
-    restart: unless-stopped
  
   #
   # librespeed - internal speed test host to lan device
@@ -465,109 +250,17 @@ services:
       - 8383:80
     restart: unless-stopped
 
-  #
-  # photoshow - basic image repository
-  # - no health check available atm
-  #
-  photoshow:
-    image: linuxserver/photoshow
-    container_name: photoshow
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/photoshow:/config
-      - $PERSIST/photoshow/pictures:/Pictures:ro
-      - $PERSIST/photoshow/thumbs:/Thumbs
-    ports:
-      - 8282:80
-    restart: unless-stopped
-
-  #
-  # chevereto - digital image manager
-  # - no health check at this time
-  #
-  chevereto:
-    image: linuxserver/chevereto
-    container_name: chevereto
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/chevereto:/config
-    ports:
-      - 4343:80 
-      - 4344:443 
-    restart: unless-stopped
-
-  #
-  # cheveretodb - mariadb for chevereto appliacation
-  #
-  cheveretodb:
-    image: linuxserver/mariadb
-    container_name: cheveretodb
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-      - MYSQL_ROOT_PASSWORD=$CPSW
-      - MYSQL_DATABASE=$CDB
-      - MYSQL_USER=$CUSER
-      - MYSQL_PASSWORD=$CPSW
-    volumes:
-      - $PERSIST/cheveretodb:/config
-    restart: unless-stopped 
-    labels:
-      - autoheal
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "--silent"]
-
-  #
-  # mysql workbench - guaccamole-based app for manipulating mysql/mariadb
-  # - no health check available at this time
-  #
-  mysql-workbench:
-    image: linuxserver/mysql-workbench
-    container_name: mysql-workbench
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/mysqlworkbench:/config
-    ports:
-      - 3001:3000
-    cap_add:
-      - IPC_LOCK
-    restart: unless-stopped
-    
-  thelounge:
-    image: linuxserver/thelounge
-    container_name: thelounge
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/thelounge:/config
-    ports:
-      - 9001:9000
-    restart: unless-stopped
-
   plex:
     container_name: plex
     hostname: $HOST_NAME
     restart: unless-stopped
     image: linuxserver/plex
-    #network_mode: host
     volumes:
       - $PERSIST/plex/config:/config
       - $PERSIST/plex/transcode:/transcode
       - $MEDIA_PATH:/Multimedia
       - $PERSIST/lazylibrarian/audiobooks:/audiobooks:rw
-    ports:  #optional if network_mode: host
+    ports: 
       - "32400:32400/tcp"
       - "3005:3005/tcp"
       - "8324:8324/tcp"
@@ -584,37 +277,20 @@ services:
       - HOSTNAME=$HOST_NAME
       - PLEX_CLAIM=$PLEX_CLAIM_TOKEN
       - ADVERTISE_IP=$ADVERTISE_IP
-      - VERSION="latest.plexpass"
+      - VERSION=docker
     labels: 
       - autoheal=$AUTOHEAL_RESTART
     healthcheck:
-      test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://192.168.1.135:32400/?X-Plex-Token=}${PLEX_TOKEN:- }|| exit 1
+      test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://192.168.1.135:32400/?X-Plex-Token=}${PLEX_TOKEN__SECRET:- }|| exit 1
       start_period: 20s
       timeout: 100s
       interval: 5s
       retries: 3
     devices:
       - /dev/dri:/dev/dri
-    cpu_percent: 50
-    mem_limit: 1500M
-    mem_reservation: 1300M
-
-  handbrake:
-    image: jlesage/handbrake
-    container_name: handbrake
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    ports:
-      - '5800:5800'
-    volumes:
-      - '$PERSIST/handbrake:/config:rw'
-      - '~/:/storage:ro'
-      - $PERSIST/handbrake/watch:/watch:rw
-      - $PERSIST/handbrake/output:/output:rw
-    devices:
-      - /dev/dri:/dev/dri
+    # cpu_percent: 50
+    # mem_limit: 1500M
+    # mem_reservation: 1300M
 
   homeassistant:
     container_name: homeassistant
@@ -703,21 +379,23 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock 
     environment:
       TZ: $TIME_ZONE
-      WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_REMOVE_VOLUMES: "true"
+      WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_INCLUDE_STOPPED: "true"
       WATCHTOWER_POLL_INTERVAL: $WT_INTERVAL
       WATCHTOWER_TIMEOUT: 15
       WATCHTOWER_NOTIFICATIONS_LEVEL: info
       WATCHTOWER_NOTIFICATIONS: shoutrrr
-      WATCHTOWER_NOTIFICATION_URL: "pushover://shoutrrr:apiToken@userToken/?devices=oneplus5"
+      # Using Pushbullet, telegram and pushover as examples, but just pick one
+      # WATCHTOWER_NOTIFICATION_URL: "pushover://shoutrrr:$PUSHOVER_APP_API__SECRET@$PUSHOVER_USER_API__SECRET/?devices=$PUSHOVER_DEVICE telegram://$TELEGRAM_BOT_TOKEN__SECRET@telegram?channels=$TELEGRAM_CHAT_ID__SECRET pushbullet://$PUSHBULLET__SECRET"
+      WATCHTOWER_NOTIFICATION_URL: "telegram://$TELEGRAM_BOT_TOKEN__SECRET@telegram?channels=$TELEGRAM_CHAT_ID__SECRET"
       # WATCHTOWER_NOTIFICATIONS: email
-      # WATCHTOWER_NOTIFICATION_EMAIL_FROM: $GM_USER
-      # WATCHTOWER_NOTIFICATION_EMAIL_TO: $GM_TO
+      # WATCHTOWER_NOTIFICATION_EMAIL_FROM: $GM_USER__SECRET
+      # WATCHTOWER_NOTIFICATION_EMAIL_TO: $GM_TO__SECRET
       # WATCHTOWER_NOTIFICATION_EMAIL_SERVER: $GM_SERVER
       # WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT: $GM_PORT
-      # WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER: $GM_USER
-      # WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD: $GM_PSW
+      # WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER: $GM_USER__SECRET
+      # WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD: $GM_PSW__SECRET
 
     restart: always
 
@@ -735,7 +413,7 @@ services:
     labels: 
       - autoheal=$AUTOHEAL_RESTART
     healthcheck:
-      test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://127.0.0.1:7878/api/system/status?apikey=}${RADARR_API_KEY:- }|| exit 1
+      test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://127.0.0.1:7878/api/system/status?apikey=}${RADARR_API_KEY__SECRET:- }|| exit 1
       start_period: 45s
       timeout: 10s
       interval: 5s
@@ -746,33 +424,6 @@ services:
     entrypoint:
       - /init
     image: linuxserver/radarr:nightly
-
-  radarr4k:
-    environment:
-      - UMASK_SET=22
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/radarr4k/config:/config:rw
-      - $MEDIA_PATH:/Multimedia:rw
-      - $PERSIST/sabnzbd/downloads:/downloads:rw
-    container_name: radarr4k
-    ports:
-      - 7879:7878
-    restart: unless-stopped
-    entrypoint:
-      - /init
-    image: linuxserver/radarr:nightly
-    labels: 
-      - autoheal=$AUTOHEAL_RESTART
-    healthcheck:
-      test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://127.0.0.1:7878/api/system/status?apikey=}${RADARR4K_API_KEY:- }|| exit 1
-      start_period: 45s
-      timeout: 10s
-      interval: 5s
-      retries: 3
-
 
   nzbhydra:
     image: linuxserver/nzbhydra2
@@ -837,7 +488,7 @@ services:
     labels: 
       - autoheal=$AUTOHEAL_RESTART
     healthcheck:
-      test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://127.0.0.1:8989/api/system/status?apikey=}${SONARR_API_KEY:- }|| exit 1
+      test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://127.0.0.1:8989/api/system/status?apikey=}${SONARR_API_KEY__SECRET:- }|| exit 1
       timeout: 10s
       interval: 5s
       retries: 3
@@ -989,25 +640,29 @@ services:
     container_name: pihole
     image: pihole/pihole
     hostname: pihole
-    mac_address: d0:ca:ab:cd:ef:01
     cap_add:
       - NET_ADMIN
-    networks: # Gives Pi-Hole a discrete IP address. (*Note* Not visible from host machine)
-      macv_network:
-        ipv4_address: $PH_SVR_IP 
     dns:
       - 127.0.0.1
       - 8.8.8.8
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "67:67/udp"
+      - "680:80/tcp"
+      - "6443:443/tcp"
     labels: 
       - autoheal=$AUTOHEAL_RESTART
     environment:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TIME_ZONE
-      - WEBPASSWORD=$PH_PSW
+      - WEBPASSWORD=$PH_PSW__SECRET
       - ServerIP=$PH_SVR_IP
       - DNS1=$PH_DNS_1
       - DNS2=$PH_DNS_2
+      - TEMPERATUREUNIT=c
+      - ADMIN_EMAIL=$GM_USER__SECRET
     volumes:
       - '$PERSIST/pihole/etc-pihole/:/etc/pihole'
       - '$PERSIST/pihole/etc-dnsmasq.d/:/etc/dnsmasq.d'
@@ -1037,22 +692,6 @@ services:
       retries: 3
     restart: unless-stopped
 
-  dozzle:
-    container_name: dozzle
-    image: amir20/dozzle
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - 9999:8080
-    restart: unless-stopped
-    # labels:
-    #   - autoheal=true
-    # healthcheck:
-    #   test: curl -fSs 127.0.0.1:8080 || exit 1
-    #   start_period: 20s
-    #   interval: 5s
-    #   retries: 3
-
   autoheal:
     container_name: autoheal
     restart: always
@@ -1070,8 +709,8 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TIME_ZONE
-      - SUBDOMAINS=$DUCKSUBDOMS
-      - TOKEN=$DUCKTOKEN
+      - SUBDOMAINS=$DUCKSUBDOMS__SECRET
+      - TOKEN=$DUCKTOKEN__SECRET
       - LOG_FILE=true #optional
     volumes:
       - $PERSIST/duckdns:/config #optional - use if log_file true
@@ -1095,7 +734,7 @@ services:
     labels: 
       - autoheal=$AUTOHEAL_RESTART
     healthcheck:
-      test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://127.0.0.1:6767/api/systemstatus?apikey=}${BAZARR_API_KEY:- }|| exit 1
+      test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://127.0.0.1:6767/api/systemstatus?apikey=}${BAZARR_API_KEY__SECRET:- }|| exit 1
       timeout: 5s
       interval: 10s
       retries: 3
@@ -1118,6 +757,8 @@ services:
       - /dev/dri/renderD128:/dev/dri/renderD128
       - /dev/dri/card0:/dev/dri/card0
     restart: unless-stopped
+    depends_on:
+      - xteve
 
   bookstack:
     image: linuxserver/bookstack
@@ -1127,10 +768,11 @@ services:
       - PGID=$PGID
       - TZ=$TIME_ZONE
       - DB_HOST=bookstackdb
-      - DB_USER=$BSUSER
-      - DB_PASS=$BSPSW
+      - DB_USER=$BSUSER__SECRET
+      - DB_PASS=$BSPSW__SECRET
       - DB_DATABASE=$BSDB
       - APP_URL=$BSBASEURL
+      - WKHTMLTOPDF=/usr/bin/wkhtmltopdf
     volumes:
       - $PERSIST/bookstack:/config
     ports:
@@ -1146,10 +788,10 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TIME_ZONE
-      - MYSQL_ROOT_PASSWORD=$BSPSW
+      - MYSQL_ROOT_PASSWORD=$BSPSW__SECRET
       - MYSQL_DATABASE=$BSDB
-      - MYSQL_USER=$BSUSER
-      - MYSQL_PASSWORD=$BSPSW
+      - MYSQL_USER=$BSUSER__SECRET
+      - MYSQL_PASSWORD=$BSPSW__SECRET
     volumes:
       - $PERSIST/bookstackdb:/config
     labels:
@@ -1172,7 +814,7 @@ services:
     image: 'dnsforge/xteve'
 
   sabnzbd:
-    image: linuxserver/sabnzbd
+    image: linuxserver/sabnzbd:unstable
     container_name: sabnzbd
     environment:
       - PUID=$PUID
@@ -1265,17 +907,6 @@ services:
       - $PERSIST/gaps:/usr/data
     image: housewrecker/gaps
     restart: unless-stopped  
-
-  openra:
-    ports:
-      - '1234:1234'
-    environment:
-      - Name=You Must Construct Additional Pylons
-      - Password=xyzzy
-      - Mod=ra
-      - ListenPort=1234
-    container_name: openra
-    image: rmoriz/openra
         
   qbittorrent:
     image: linuxserver/qbittorrent
@@ -1380,45 +1011,419 @@ services:
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "--silent"]
 
-  nextclouddb:
-    container_name: nextclouddb
-    image: mariadb
-    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
-    restart: always
-    volumes:
-      - $PERSIST/nextclouddb:/var/lib/mysql
-    environment:
-      - MYSQL_ROOT_PASSWORD=xyzzy
-      - MYSQL_PASSWORD=xyzzy
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
-    labels:
-      - autoheal
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "--silent"]
+  # radarr4k:
+  #   environment:
+  #     - UMASK_SET=22
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/radarr4k/config:/config:rw
+  #     - $MEDIA_PATH:/Multimedia:rw
+  #     - $PERSIST/sabnzbd/downloads:/downloads:rw
+  #   container_name: radarr4k
+  #   ports:
+  #     - 7879:7878
+  #   restart: unless-stopped
+  #   entrypoint:
+  #     - /init
+  #   image: linuxserver/radarr:nightly
+  #   labels: 
+  #     - autoheal=$AUTOHEAL_RESTART
+  #   healthcheck:
+  #     test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://127.0.0.1:7878/api/system/status?apikey=}${RADARR4K_API_KEY__SECRET:- }|| exit 1
+  #     start_period: 45s
+  #     timeout: 10s
+  #     interval: 5s
+  #     retries: 3
 
-  nextcloud:
-    container_name: nextcloud
-    ports:
-      - 8082:80
-    links:
-      - nextclouddb
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-    volumes:
-      - $PERSIST/nextcloud/html:/var/www/html
-      - $PERSIST/nextcloud/custom_apps:/var/www/html/custom_apps
-      - $PERSIST/nextcloud/config:/var/www/html/config
-      - $PERSIST/nextcloud/data:/var/www/html/data
-      - $PERSIST/nextcloud/themes:/var/www/html/themes/<YOUR_CUSTOM_THEME>
-    image: nextcloud
-    restart: always
-    depends_on:
-      nextclouddb:
-        condition: service_healthy
+###### Not frequently in use ####################################################
+  # handbrake:
+  #   image: jlesage/handbrake
+  #   container_name: handbrake
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   ports:
+  #     - '5800:5800'
+  #   volumes:
+  #     - '$PERSIST/handbrake:/config:rw'
+  #     - '~/:/storage:ro'
+  #     - $PERSIST/handbrake/watch:/watch:rw
+  #     - $PERSIST/handbrake/output:/output:rw
+  #   devices:
+  #     - /dev/dri:/dev/dri
 
+  # nextclouddb:
+  #   container_name: nextclouddb
+  #   image: mariadb
+  #   command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+  #   restart: always
+  #   volumes:
+  #     - $PERSIST/nextclouddb:/var/lib/mysql
+  #   environment:
+  #     - MYSQL_ROOT_PASSWORD=xyzzy
+  #     - MYSQL_PASSWORD=xyzzy
+  #     - MYSQL_DATABASE=nextcloud
+  #     - MYSQL_USER=nextcloud
+  #   labels:
+  #     - autoheal
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "--silent"]
+
+  # nextcloud:
+  #   container_name: nextcloud
+  #   ports:
+  #     - 8082:80
+  #   links:
+  #     - nextclouddb
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/nextcloud/html:/var/www/html
+  #     - $PERSIST/nextcloud/custom_apps:/var/www/html/custom_apps
+  #     - $PERSIST/nextcloud/config:/var/www/html/config
+  #     - $PERSIST/nextcloud/data:/var/www/html/data
+  #     - $PERSIST/nextcloud/themes:/var/www/html/themes/<YOUR_CUSTOM_THEME>
+  #   image: nextcloud
+  #   restart: always
+  #   depends_on:
+  #     nextclouddb:
+  #       condition: service_healthy
+
+  # dozzle:
+  #   container_name: dozzle
+  #   image: amir20/dozzle
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   ports:
+  #     - 9999:8080
+  #   restart: unless-stopped
+
+  # openra:
+  #   ports:
+  #     - '1234:1234'
+  #   environment:
+  #     - Name=You Must Construct Additional Pylons
+  #     - Password=xyzzy
+  #     - Mod=ra
+  #     - ListenPort=1234
+  #   container_name: openra
+  #   image: rmoriz/openra
+
+  # #
+  # # photoshow - basic image repository
+  # # - no health check available atm
+  # #
+  # photoshow:
+  #   image: linuxserver/photoshow
+  #   container_name: photoshow
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/photoshow:/config
+  #     - $PERSIST/photoshow/pictures:/Pictures:ro
+  #     - $PERSIST/photoshow/thumbs:/Thumbs
+  #   ports:
+  #     - 8282:80
+  #   restart: unless-stopped
+
+  # #
+  # # chevereto - digital image manager
+  # # - no health check at this time
+  # #
+  # chevereto:
+  #   image: linuxserver/chevereto
+  #   container_name: chevereto
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/chevereto:/config
+  #   ports:
+  #     - 4343:80 
+  #     - 4344:443 
+  #   restart: unless-stopped
+
+  # #
+  # # cheveretodb - mariadb for chevereto appliacation
+  # #
+  # cheveretodb:
+  #   image: linuxserver/mariadb
+  #   container_name: cheveretodb
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #     - MYSQL_ROOT_PASSWORD=$CPSW__SECRET
+  #     - MYSQL_DATABASE=$CDB
+  #     - MYSQL_USER=$CUSER__SECRET
+  #     - MYSQL_PASSWORD=$CPSW__SECRET
+  #   volumes:
+  #     - $PERSIST/cheveretodb:/config
+  #   restart: unless-stopped 
+  #   labels:
+  #     - autoheal
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "--silent"]
+
+  # #
+  # # mysql workbench - guaccamole-based app for manipulating mysql/mariadb
+  # # - no health check available at this time
+  # #
+  # mysql-workbench:
+  #   image: linuxserver/mysql-workbench
+  #   container_name: mysql-workbench
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/mysqlworkbench:/config
+  #   ports:
+  #     - 3001:3000
+  #   cap_add:
+  #     - IPC_LOCK
+  #   restart: unless-stopped
+    
+  # thelounge:
+  #   image: linuxserver/thelounge
+  #   container_name: thelounge
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/thelounge:/config
+  #   ports:
+  #     - 9001:9000
+  #   restart: unless-stopped
+
+  # #
+  # # freshrss - rss feed aggregator
+  # # - no health check available atm
+  # #
+  # freshrss:
+  #   image: linuxserver/freshrss
+  #   container_name: freshrss
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/freshrss:/config
+  #   ports:
+  #     - 8585:80
+  #   restart: unless-stopped
+
+  # #
+  # # Dashmachine -
+  # # - no health check possible atm
+  # #      
+  # dashmachine:
+  #   container_name: dashmachine
+  #   restart: unless-stopped
+  #   image: rmountjoy/dashmachine
+  #   ports:
+  #     - 2000:5000
+  #   environment:
+  #     - CONTEXT_PATH=/
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/dashmachine:/dashmachine/dashmachine/user_data
+
+  # jfa-go:
+  #   image: hrfee/jfa-go
+  #   container_name: jfa-go
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/jfa-go:/data
+  #     - $PERSIST/jellyfin/config:/jf
+  #     - /etc/localtime:/etc/localtime:ro
+  #   ports:
+  #     - 8056:8056
+  #   restart: unless-stopped
+
+  # #
+  # # nginx - basic web server
+  # # - no health check available atm
+  # #
+  # nginx:
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   ports:
+  #     - '6969:80'
+  #   container_name: nginx
+  #   volumes:
+  #     - $PERSIST/nginx/site-content:/usr/share/nginx/html
+  #     #- $PERSIST/nginx/nginx.conf /etc/nginx/conf.d/default.conf
+  #   image: nginx
+
+  # overseerr:
+  #   container_name: overseerr
+  #   restart: unless-stopped
+  #   image: sctx/overseerr
+  #   ports:
+  #     - 5055:3000
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/overseerr:/app/config
+  #   labels: 
+  #     - autoheal=$AUTOHEAL_RESTART
+  #   healthcheck:
+  #     test: wget http://127.0.0.1:5055/api/v1/status -qO /dev/null || exit 1
+  #     interval: 5s
+  #     retries: 3
+
+  #       #
+  # # filezilla
+  # #
+  # filezilla:
+  #   image: jlesage/filezilla
+  #   container_name: filezilla
+  #   ports:
+  #     - 5801:5800
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/filezilla:/config:rw
+  #     - $MEDIA_PATH:/storage  
+  #   restart: unless-stopped
+
+  # # 
+  # # Lychee - photo management solution
+  # # - no health check identified atm
+  # #
+  # lychee:
+  #   image: lycheeorg/lychee
+  #   container_name: lychee
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #     - DB_CONNECTION=mysql
+  #     - DB_HOST=lycheedb
+  #     - DB_PORT=3306
+  #     - DB_DATABASE=lychee
+  #     - DB_USERNAME=lychee
+  #     - DB_PASSWORD=lychee
+  #     - STARTUP_DELAY=60
+  #   volumes:
+  #     - $PERSIST/lychee/conf:/conf
+  #     - $PERSIST/lychee/uploads:/uploads
+  #     - $PERSIST/lychee/sym:/sym
+  #   ports:
+  #     - 90:80
+  #   restart: unless-stopped
+  #   depends_on:
+  #     lycheedb:
+  #       condition: service_healthy
+
+  # lycheedb:
+  #   container_name: lychee_db
+  #   image: mariadb:10
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #     - MYSQL_ROOT_PASSWORD=lychee
+  #     - MYSQL_DATABASE=lychee
+  #     - MYSQL_USER=lychee
+  #     - MYSQL_PASSWORD=lychee
+  #   expose: 
+  #     - 3306
+  #   volumes:
+  #     - $PERSIST/lycheedb:/var/lib/mysql
+  #   restart: unless-stopped
+  #   labels:
+  #     - autoheal
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "--silent"]
+
+  # #
+  # # monitorr - basic web site monitor
+  # # - no health check available atm
+  # #
+  # monitorr:
+  #   container_name: monitorr
+  #   image: index.docker.io/monitorr/monitorr
+  #   ports:
+  #     - "88:80/tcp"
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/monitorr:/app
+  #   restart: on-failure
+
+  # tdarr:
+  #   image: index.docker.io/haveagitgat/tdarr
+  #   container_name: tdarr
+  #   ports:
+  #     -  8265:8265
+  #   labels: 
+  #     - autoheal=$AUTOHEAL_RESTART
+  #   healthcheck:
+  #     test: curl -fSs http://127.0.0.1:8265 || exit 1
+  #     start_period: 120s
+  #     timeout: 10s
+  #     interval: 5s
+  #     retries: 3
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/tdarr/data:/home/Tdarr/Documents/Tdarr
+  #     - $PERSIST/tdarr/data/db:/var/lib/mongodb
+  #     - $MEDIA_PATH:/home/Tdarr/media
+  #     - $PERSIST/tdarr/transcodecache:/home/Tdarr/cache
+  #     - /etc/localtime:/etc/localtime:ro
+  #   devices:
+  #     - "/dev/dri:/dev/dri"
+  
+  # #
+  # # organizr - link and page manager
+  # #
+  # organizr:
+  #   environment:
+  #     - HOME=/root
+  #     - TERM=xterm
+  #     - TZ=$TIME_ZONE
+  #   volumes:
+  #     - $PERSIST/organizr/config:/config:rw
+  #   container_name: organizr
+  #   ports:
+  #     - 5443:443
+  #     - 580:80
+  #   restart: 'on-failure:0'
+  #   entrypoint:
+  #     - /init
+  #   labels: 
+  #     - autoheal=$AUTOHEAL_RESTART
+  #   image: organizr/organizr
+
+
+# VOLUMES ####################################################################################
 volumes:
   proxymanagerdb: 
   nextclouddb: 
@@ -1430,14 +1435,16 @@ volumes:
   #     o: username=(username),password=(password),rw,domain=(domainname),uid=1000,gid=1000
   #     device: "\\\\(ipaddress)\\shared"
 
-networks:
-  macv_network:
-    driver: macvlan
-    driver_opts:
-      parent: $ETHCARD   
-    ipam:
-      config:
-        - subnet: $SUBNET
-          #gateway: $GATEWAY
-          #ip_range: $IP_RANGE
+ 
+# NETWORKS #################################################################################### 
+# networks:
+#   macv_network:
+#     driver: macvlan
+#     driver_opts:
+#       parent: $ETHCARD   
+#     ipam:
+#       config:
+#         - subnet: $SUBNET
+#           #gateway: $GATEWAY
+#           #ip_range: $IP_RANGE
             
