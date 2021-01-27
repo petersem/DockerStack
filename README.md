@@ -5,8 +5,6 @@ Just update the values in the .env file and run "docker-compose up -d". I normal
   
 Once everything is installed, you will still have to configure each app.
   
-***For the .env file, rename this to be just .env
-  
 Dont forget to create directories under your docker folder for the volumes mapped in the yaml
   
 Note: I generally organise my media under one top-level directory and all lower case. I find this makes it easier with container references.
@@ -20,6 +18,7 @@ Note: I generally organise my media under one top-level directory and all lower 
           - audiobooks
           - ebooks
           - music
+          - anime
 
 This yaml will run on Synology NAS, Ubuntu, 99.5% on Windows (with WSL 2), and at least 70% on a Raspberry Pi (but not all at once).
 
