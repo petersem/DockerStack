@@ -77,7 +77,6 @@
 # 8082      - NextCloud                   Collaboration platform
 # 8123      - HomeAssistant               Smart home monitoring and management
 # 8181      - Tautulli                    Plex monitoring and statistics
-# 8085      - Domoticz                    Smart home montioring and management
 #
 # Databases
 # -----------------------------------------------------------------------------------------------------------------
@@ -1491,7 +1490,7 @@ networks:
   macv_network:
     driver: macvlan
     driver_opts:
-      parent: ovs_bond0   
+      parent: $ETHCARD  
     ipam:
       driver: default
       config:
