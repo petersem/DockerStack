@@ -1,5 +1,5 @@
 # DockerStack - https://www.facebook.com/groups/205764024543769/?ref=share
-A bunch of tools I use in Docker
+My docker container definitions (docker compose) that I run. Plus a few other little bits.
 
 Just update the values in the .env file and run "docker-compose up -d". I normally persist my local docker files to /home/user/docker/appName, but put them where you like. 
   
@@ -20,7 +20,7 @@ Note: I generally organise my media under one top-level directory and all lower 
           - music
           - anime
 
-This yaml will run on Synology NAS, Ubuntu, 99.5% on Windows (with WSL 2), and at least 70% on a Raspberry Pi (but not all at once).
+This yaml will run on Synology NAS, Ubuntu, 95% on Windows (with WSL 2), and at least 70% on a Raspberry Pi (but not all at once).
 
 Join me and others on the Dockerholics fb group.
 
