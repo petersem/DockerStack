@@ -22,4 +22,5 @@ if ( !(lsmod | grep -q "^tun\s") ); then
 fi
 
 # Set permissions for integrated GPU fro Plex / Jellyfin / Emby / Dizquetv / handbrake / etc...
+# - The following line is only needed if your Synology NAS has an embedded GPU
 chmod 777 /dev/dri /dev/dri/card0 /dev/dri/renderD128
