@@ -1080,9 +1080,10 @@ services:
   #   image: jlesage/handbrake
   #   container_name: handbrake
   #   environment:
-  #     - PUID=$PUID
-  #     - PGID=$PGID
+  #     - USER_ID=$PUID
+  #     - GROUP_ID=$PGID
   #     - TZ=$TIME_ZONE
+  #     - KEEP_APP_RUNNING=1
   #   ports:
   #     - '5800:5800'
   #   volumes:
