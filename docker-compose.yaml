@@ -17,7 +17,8 @@
 # 680, 6443 - Pi-Hole                     Ad blocker and DHCP
 # -         - DuckDNS                     Dynamic DNS updater for DuckDNS
 # 8118      - Privoxy                     Web proxy server, using VPNPrivoxy for accessing geo-blocked web sites
-# 
+# 8089      - Btiwarden                   Passowrd management application 
+#
 # Media Playing or Provisioning 
 # -----------------------------------------------------------------------------------------------------------------
 # 32400     - Plex Media Server           Media server
@@ -41,6 +42,7 @@
 # 9001      - TheLounge                   IRC Client
 # 6875      - BookStack                   Shared documentation hub
 # 7777      - HasteBin                    Private PasteBin clone
+# 2525      - Privatebin                  Pastebin alternative
 #
 # Media Gathering
 # -----------------------------------------------------------------------------------------------------------------
@@ -62,6 +64,7 @@
 # 5055      - Overseer                    Media request tool
 # 8484      - Gaps                        Plex missing media searcher
 # 6789      - NzbGet                      Usenet downloader
+# 8282      - Rutorrent                   Torrent download app
 #
 # Docker Related
 # -----------------------------------------------------------------------------------------------------------------
@@ -108,6 +111,60 @@ version: '2.4'
 # SERVICES ####################################################################################
 services:
 
+ # Password Manager
+  bitwarden:
+    container_name: bitwarden
+    image: bitwardenrs/server
+    restart: always
+    volumes:
+      - $PERSIST/bitwarden/data:/data
+      - $PERSIST/bitwarden/ssl:/ssl
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - 8089:8089
+      - 3012:3012
+    user: $PUID:$PGID
+    environment:
+      - LOG_FILE=/data/bitwarden.log
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TIME_ZONE
+     # - SIGNUPS_ALLOWED=true
+      - SIGNUPS_ALLOWED=false
+      - INVITATIONS_ALLOWED=true
+      - LOG_LEVEL=warn
+      - EXTENDED_LOGGING=true
+      - DOMAIN=https://bw.$DOMAIN
+      - ROCKET_PORT=8089
+      - WEBSOCKET_ENABLED=true
+      - ADMIN_TOKEN=$BW_TOKEN__SECRET
+      - SMTP_HOST=$GM_SERVER
+      - SMTP_FROM=$GM_USER__SECRET
+      - SMTP_PORT=$GM_PORT
+      - SMTP_SSL=true
+      - SMTP_USERNAME=$GM_USER__SECRET
+      - SMTP_PASSWORD=$GM_PSW__SECRET
+    labels: 
+      - autoheal=true
+
+  #
+  # privatebin - pastebin alternative
+  #
+  privatebin:
+    container_name: privatebin
+    restart: unless-stopped
+    image: privatebin/nginx-fpm-alpine
+    ports:
+      - 2525:8080
+    volumes:
+      - $PERSIST/privatebin:/srv/data
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TIME_ZONE
+      - PHP_TZ=$TIME_ZONE
+      - PASSWORD=false
+
   #
   # piwigo - photo management application
   #
@@ -120,7 +177,7 @@ services:
       - TZ=$TIME_ZONE
     volumes:
       - $PERSIST/piwigo/config:/config
-      - $MEDIA_PATH/Pictures:/config/www/gallery/galleries
+      - $MEDIA_PATH/pictures:/config/www/gallery/galleries
     ports:
       - 880:80
     restart: unless-stopped
@@ -257,12 +314,12 @@ services:
     container_name: plex
     hostname: $HOST_NAME
     restart: unless-stopped
-    image: linuxserver/plex
+    image: plexinc/pms-docker:plexpass
     volumes:
       - $PERSIST/plex/config:/config
       - $PERSIST/plex/transcode:/transcode
-      - $MEDIA_PATH:/Multimedia
-      - $PERSIST/lazylibrarian/audiobooks:/audiobooks:rw
+      - $MEDIA_PATH:/media
+      - $MEDIA_PATH/audiobooks:/audiobooks:rw
     ports: 
       - "32400:32400/tcp"
       - "3005:3005/tcp"
@@ -273,27 +330,31 @@ services:
       - "32412:32412/udp"
       - "32413:32413/udp"
       - "32414:32414/udp"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
-      - PUID=$PUID
-      - PGID=$PGID
+      - PLEX_UID=$PUID
+      - PLEX_GID=$PGID
       - TZ=$TIME_ZONE
       - HOSTNAME=$HOST_NAME
       - PLEX_CLAIM=$PLEX_CLAIM_TOKEN__SECRET
       - ADVERTISE_IP=$ADVERTISE_IP
-      - VERSION=docker
+      - VERSION=$VERSION
+      - ALLOWED_NETWORKS=$ALLOWED_NETWORKS
     labels: 
       - autoheal=$AUTOHEAL_RESTART
     healthcheck:
       test: curl -fsS http://localhost:32400/identity > /dev/null || exit 1
-      start_period: 20s
-      timeout: 100s
+      start_period: 60s
+      timeout: 10s
       interval: 5s
       retries: 3
     devices:
       - /dev/dri:/dev/dri
     # cpu_percent: 50
-    mem_limit: 1500M
-    mem_reservation: 1300M
+    #mem_limit: 1500M
+    #mem_reservation: 1300M
 
   homeassistant:
     container_name: homeassistant
@@ -336,9 +397,8 @@ services:
         condition: service_healthy
 
   vpnprivoxy:
-    privileged: true
     devices:
-      - /dev/net/tun2
+      - /dev/net/tun
     restart: unless-stopped
     container_name: vpnprivoxy
     ports:
@@ -352,10 +412,10 @@ services:
     stdin_open: true
     tty: true
     dns:
-      - 8.8.4.4
-      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - $PERSIST/vpnprivoxy:/vpn
+    command: -f ""
 
   portainer:
     image: portainer/portainer-ce
@@ -410,7 +470,7 @@ services:
       - TZ=$TIME_ZONE
     volumes:
       - $PERSIST/radarr/config:/config:rw
-      - $MEDIA_PATH:/Multimedia:rw
+      - $MEDIA_PATH:/media:rw
       - $DOWNLOADS:/downloads:rw
     container_name: radarr
     labels: 
@@ -484,7 +544,7 @@ services:
       - TZ=$TIME_ZONE
     volumes:
       - $PERSIST/sonarr/config:/config:rw
-      - $MEDIA_PATH/TV:/TV:rw
+      - $MEDIA_PATH/tv:/tv:rw
       - $MEDIA_PATH/anime:/anime:rw
       - $DOWNLOADS:/downloads:rw
     container_name: sonarr
@@ -539,9 +599,7 @@ services:
       - TZ=$TIME_ZONE
     volumes:
       - $PERSIST/jellyfin/config:/config
-      - $MEDIA_PATH:/Multimedia
-      - $PERSIST/lazylibrarian/audiobooks:/audiobooks:rw
-      - $PERSIST/lazylibrarian/books:/books:rw         
+      - $MEDIA_PATH:/media
     ports:
       - 8096:8096
     labels: 
@@ -598,14 +656,14 @@ services:
       - DOCKER_MODS=linuxserver/calibre-web:calibre
     volumes:
       - $PERSIST/calibre-web/config:/config
-      - $MEDIA_PATH/EBooks:/books:rw
+      - $MEDIA_PATH/ebooks:/books:rw
     ports:
       - 8083:8083
     labels: 
       - autoheal=$AUTOHEAL_RESTART
     healthcheck:
       test: curl -fSs http://127.0.0.1:8083 || exit 1
-      start_period: 300s
+      start_period: 500s
       timeout: 10s
       interval: 30s
       retries: 3
@@ -616,7 +674,7 @@ services:
     restart: unless-stopped
     
   lidarr:
-    image: linuxserver/lidarr
+    image: linuxserver/lidarr:nightly
     container_name: lidarr
     environment:
       - PUID=$PUID
@@ -625,7 +683,7 @@ services:
       - UMASK_SET=022 
     volumes:
       - $PERSIST/lidarr/config:/config
-      - $MEDIA_PATH/Music:/music
+      - $MEDIA_PATH/music:/music
       - $DOWNLOADS:/downloads:rw
     ports:
       - 8686:8686
@@ -647,7 +705,7 @@ services:
       - NET_ADMIN
     dns:
       - 127.0.0.1
-      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "53:53/tcp"
       - "53:53/udp"
@@ -675,12 +733,13 @@ services:
     image: linuxserver/calibre
     container_name: calibre
     environment:
-      - PUID=$PUID
-      - PGID=$PGID
+      - USER_ID=$PUID
+      - GROUP_ID=$PGID
+      - KEEP_APP_RUNNING=1
       - TZ=$TIME_ZONE
     volumes:
       - $PERSIST/calibre/config:/config
-      - $MEDIA_PATH/EBooks:/books:rw
+      - $MEDIA_PATH/ebooks:/books:rw
       - $DOWNLOADS:/downloads:rw
     ports:
       - 7080:8080
@@ -730,8 +789,8 @@ services:
       - UMASK_SET=022 #optional
     volumes:
       - $PERSIST/bazarr/config:/config
-      - $MEDIA_PATH/Movies:/movies
-      - $MEDIA_PATH/TV:/tv
+      - $MEDIA_PATH/movies:/movies
+      - $MEDIA_PATH/tv:/tv
     ports:
       - 6767:6767
     labels: 
@@ -864,7 +923,7 @@ services:
       - TZ=$TIME_ZONE
     volumes:
       - $PERSIST/readarr:/config
-      - $MEDIA_PATH/EBooks:/books:rw
+      - $MEDIA_PATH/ebooks:/books:rw
       - $DOWNLOADS:/downloads:rw
     image: hotio/readarr:nightly    
     restart: unless-stopped
@@ -967,21 +1026,20 @@ services:
     restart: unless-stopped   
     
   vpn:
-    privileged: true
     devices:
       - /dev/net/tun
     restart: unless-stopped
     container_name: vpn
+    privileged: true
     ports:
       # jackett ports
       - 9117:9117
-      # qbittorrent ports
+      # qbittorrent
       - 6881:6881
-      - 6881:6881/udp
+      #- 6881:6881/udp
       - 9991:9991
     dns:
-      - 8.8.4.4
-      - 8.8.8.8
+      - 1.1.1.1
     image: dperson/openvpn-client
     security_opt:
       - label:disable
@@ -991,6 +1049,7 @@ services:
     tty: true
     volumes:
       - $PERSIST/openvpn:/vpn
+    command: -f ""
 
   proxymanager:
     container_name: proxy-manager
@@ -1040,7 +1099,7 @@ services:
       - TZ=$TIME_ZONE
     volumes:
       - $PERSIST/radarr4k/config:/config:rw
-      - $MEDIA_PATH:/Multimedia:rw
+      - $MEDIA_PATH:/media:rw
       - $DOWNLOADS:/downloads:rw
     container_name: radarr4k
     ports:
@@ -1080,10 +1139,9 @@ services:
   #   image: jlesage/handbrake
   #   container_name: handbrake
   #   environment:
-  #     - USER_ID=$PUID
-  #     - GROUP_ID=$PGID
+  #     - PUID=$PUID
+  #     - PGID=$PGID
   #     - TZ=$TIME_ZONE
-  #     - KEEP_APP_RUNNING=1
   #   ports:
   #     - '5800:5800'
   #   volumes:
@@ -1443,22 +1501,45 @@ services:
   #   labels: 
   #     - autoheal=$AUTOHEAL_RESTART
   #   image: organizr/organizr
-
-  # nginx1:
+  ##
+  ## Rutorrent - torrent d/l app
+  ##
+  # rutorrent:
+  #   image: ghcr.io/linuxserver/rutorrent
+  #   container_name: rutorrent
   #   environment:
-  #     - PUID=1026
-  #     - PGID=100
-  #     - TZ=Australia/Brisbane
-  #   ports:
-  #     - '80:80'
-  #   container_name: nginx1
-  #   mac_address: 02:42:c0:a8:84:22
-  #   networks: 
-  #     macv_network:
-  #       ipv4_address: 192.168.1.241
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
   #   volumes:
-  #     - $PERSIST/nginx1/site-content:/usr/share/nginx/html
-  #   image: nginx
+  #     - $PERSIST/rutorrent:/config
+  #     - $DOWNLOADS:/downloads
+  #   network_mode: "service:vpn"
+  #   # ports:
+  #   #   - 8282:80
+  #   #   - 5005:5000
+  #   #   - 51413:51413
+  #   #   - 6881:6881/udp
+  #   restart: unless-stopped
+  #   depends_on:
+  #     vpn:
+  #        condition: service_healthy
+         
+  nginx1:
+    environment:
+      - PUID=1026
+      - PGID=100
+      - TZ=Australia/Brisbane
+    ports:
+      - '80:80'
+    container_name: nginx1
+    mac_address: 02:42:c0:a8:84:22
+    networks: 
+      macv_network:
+        ipv4_address: 192.168.1.241
+    volumes:
+      - $PERSIST/nginx1/site-content:/usr/share/nginx/html
+    image: nginx
 
   # nginx2:
   #   environment:
@@ -1489,15 +1570,15 @@ services:
 
  
 # NETWORKS #################################################################################### 
-#networks:
+networks:
   # # Cant use ip ranges yet. hopefully coming in a future release
-  # macv_network:
-  #   driver: macvlan
-  #   driver_opts:
-  #     parent: $ETHCARD  
-  #   ipam:
-  #     driver: default
-  #     config:
-  #       - subnet: 192.168.1.0/24
-  #         gateway: 192.168.1.1
-  
+  macv_network:
+    driver: macvlan
+    driver_opts:
+      parent: $ETHCARD  
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.1
+
