@@ -68,7 +68,7 @@
 #
 # Docker Related
 # -----------------------------------------------------------------------------------------------------------------
-# -         - Watchtower                  Update containers with latest imiages
+# -         - Watchtower                  Update containers with latest images
 # -         - Autoheal                    Restarts unhealthy containers
 # 9000      - Portainer                   Docker management tool
 # 9999      - Dozzle                      Container log aggregator
