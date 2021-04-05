@@ -112,41 +112,7 @@ version: '2.4'
 services:
 
  # Password Manager
-  bitwarden:
-    container_name: bitwarden
-    image: bitwardenrs/server
-    restart: always
-    volumes:
       - $PERSIST/bitwarden/data:/data
-      - $PERSIST/bitwarden/ssl:/ssl
-      - /etc/localtime:/etc/localtime:ro
-    ports:
-      - 8089:8089
-      - 3012:3012
-    user: $PUID:$PGID
-    environment:
-      - LOG_FILE=/data/bitwarden.log
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-     # - SIGNUPS_ALLOWED=true
-      - SIGNUPS_ALLOWED=false
-      - INVITATIONS_ALLOWED=true
-      - LOG_LEVEL=warn
-      - EXTENDED_LOGGING=true
-      - DOMAIN=https://bw.$DOMAIN
-      - ROCKET_PORT=8089
-      - WEBSOCKET_ENABLED=true
-      - ADMIN_TOKEN=$BW_TOKEN__SECRET
-      - SMTP_HOST=$GM_SERVER
-      - SMTP_FROM=$GM_USER__SECRET
-      - SMTP_PORT=$GM_PORT
-      - SMTP_SSL=true
-      - SMTP_USERNAME=$GM_USER__SECRET
-      - SMTP_PASSWORD=$GM_PSW__SECRET
-    labels: 
-      - autoheal=true
-
   #
   # privatebin - pastebin alternative
   #
@@ -656,7 +622,7 @@ services:
       - DOCKER_MODS=linuxserver/calibre-web:calibre
     volumes:
       - $PERSIST/calibre-web/config:/config
-      - $MEDIA_PATH/ebooks:/books:rw
+      - $MEDIA_PATH/books:/books:rw
     ports:
       - 8083:8083
     labels: 
@@ -739,7 +705,7 @@ services:
       - TZ=$TIME_ZONE
     volumes:
       - $PERSIST/calibre/config:/config
-      - $MEDIA_PATH/ebooks:/books:rw
+      - $MEDIA_PATH/books:/books:rw
       - $DOWNLOADS:/downloads:rw
     ports:
       - 7080:8080
@@ -923,7 +889,7 @@ services:
       - TZ=$TIME_ZONE
     volumes:
       - $PERSIST/readarr:/config
-      - $MEDIA_PATH/ebooks:/books:rw
+      - $MEDIA_PATH/books:/books:rw
       - $DOWNLOADS:/downloads:rw
     image: hotio/readarr:nightly    
     restart: unless-stopped
