@@ -28,6 +28,7 @@
 # 2001      - MovieMatch                  Allows user matching of movies to watch (think Tinder for movies)
 # 34400     - Xteve                       Allows multiple TV guides to be consolidated into one 
 # 8083      - Calibre-web                 E-book browsing and viewing
+# 9876      - Poster                      Plex, sonarr, radarr media display
 #
 # Photo Management
 # -----------------------------------------------------------------------------------------------------------------
@@ -106,10 +107,52 @@
 # -----------------------------------------------------------------------------------------------------------------
 # 1234      - OpenRA                      Open Red Alert game server
 #
+# CRM 
+# -----------------------------------------------------------------------------------------------------------------
+# 8008      - Monica                      CRM system
+#
 version: '2.4'
 
 # SERVICES ####################################################################################
 services:
+  monica:
+    container_name: monica
+    image: monica
+    depends_on:
+      - monicadb
+    ports:
+      - 8008:80
+    environment:
+      - APP_KEY=thisismyrandomappkey!!likeit?007
+      - DB_HOST=monicadb
+    volumes:
+      - $PERSIST/monica:/var/www/html/storage
+    restart: always
+  
+  monicadb:
+    container_name: monicadb
+    image: mysql:5.7
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+      - MYSQL_DATABASE=monica
+      - MYSQL_USER=homestead
+      - MYSQL_PASSWORD=secret
+    volumes:
+      - $PERSIST/monicadb:/var/lib/mysql
+    restart: always
+  
+ # Poster
+  poster:
+    image: petersem/poster
+    container_name: poster
+    environment:
+      TZ: $TIME_ZONE
+    volumes:
+      - $PERSIST/poster/randomthemes:/usr/src/app/public/randomthemes
+      - $PERSIST/poster/config:/usr/src/app/config
+ #   network_mode: host
+    ports:
+      - 9876:3000
 
  # Password Manager
   bitwarden:
@@ -314,12 +357,13 @@ services:
     container_name: plex
     hostname: $HOST_NAME
     restart: unless-stopped
-    image: plexinc/pms-docker:plexpass
+    image: linuxserver/plex
     volumes:
       - $PERSIST/plex/config:/config
       - $PERSIST/plex/transcode:/transcode
       - $MEDIA_PATH:/media
       - $MEDIA_PATH/audiobooks:/audiobooks:rw
+    network_mode: host
     ports: 
       - "32400:32400/tcp"
       - "3005:3005/tcp"
@@ -334,12 +378,12 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     environment:
-      - PLEX_UID=$PUID
-      - PLEX_GID=$PGID
+      - PUID=$PUID
+      - PGID=$PGID
       - TZ=$TIME_ZONE
       - HOSTNAME=$HOST_NAME
       - PLEX_CLAIM=$PLEX_CLAIM_TOKEN__SECRET
-      - ADVERTISE_IP=$ADVERTISE_IP
+      - ADVERTISE_IP="http://192.168.1.135:32400/"
       - VERSION=$VERSION
       - ALLOWED_NETWORKS=$ALLOWED_NETWORKS
     labels: 
@@ -351,6 +395,8 @@ services:
       interval: 5s
       retries: 3
     devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
       - /dev/dri:/dev/dri
     # cpu_percent: 50
     #mem_limit: 1500M
@@ -360,10 +406,10 @@ services:
     container_name: homeassistant
     restart: always
     image: homeassistant/home-assistant
-    devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
-      - /dev/ttyUSB1:/dev/ttyUSB1
-      - /dev/ttyACM0:/dev/ttyACM0
+    #devices:
+      # - /dev/ttyUSB0:/dev/ttyUSB0
+      # - /dev/ttyUSB1:/dev/ttyUSB1
+      # - /dev/ttyACM0:/dev/ttyACM0
     volumes:
       - $PERSIST/homeassistant:/config
       - /etc/localtime:/etc/localtime:ro
@@ -560,7 +606,7 @@ services:
     restart: 'unless-stopped'
     entrypoint:
       - /init
-    image: linuxserver/sonarr:preview
+    image: linuxserver/sonarr:develop
 
   lazylibrarian:
     environment:
@@ -727,14 +773,20 @@ services:
     volumes:
       - '$PERSIST/pihole/etc-pihole/:/etc/pihole'
       - '$PERSIST/pihole/etc-dnsmasq.d/:/etc/dnsmasq.d'
+    healthcheck:
+      test: curl -fSs http://127.0.0.1:80 || exit 1
+      start_period: 15s
+      timeout: 5s
+      interval: 15s
+      retries: 3
     restart: unless-stopped
     
   calibre:
     image: linuxserver/calibre
     container_name: calibre
     environment:
-      - USER_ID=$PUID
-      - GROUP_ID=$PGID
+      - PUID=$PUID
+      - PGID=$PGID
       - KEEP_APP_RUNNING=1
       - TZ=$TIME_ZONE
     volumes:
@@ -747,8 +799,8 @@ services:
     labels: 
       - autoheal=$AUTOHEAL_RESTART
     healthcheck:
-      test: curl -fSs http://127.0.0.1:8081 || exit 1
-      start_period: 30s
+      test: curl -fSs http://127.0.0.1:8080 || exit 1
+      start_period: 180s
       timeout: 10s
       interval: 15s
       retries: 3
@@ -972,6 +1024,19 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+    restart: unless-stopped 
+
+  hddtemp:
+    container_name: hddtemp
+    image: drewster727/hddtemp-docker
+    privileged: true
+    environment:
+      - HDDTEMP_ARGS="-q -d -F /dev/sd*" 
+      - TZ=$TIME_ZONE
+    network_mode: host
+    restart: unless-stopped 
 
   gaps:
     ports:
@@ -1005,6 +1070,14 @@ services:
 #      - 6881:6881/udp
 #      - 9991:9991
     restart: unless-stopped
+    labels: 
+      - autoheal=$AUTOHEAL_RESTART
+    healthcheck:
+      test: curl -fSs https://google.com || exit 1
+      start_period: 90s
+      timeout: 10s
+      interval: 5s
+      retries: 3
         
   jackett:
     image: linuxserver/jackett
@@ -1024,6 +1097,14 @@ services:
 #    ports:
 #      - 9117:9117
     restart: unless-stopped   
+    healthcheck:
+      test: curl -fSs https://google.com || exit 1
+      start_period: 90s
+      timeout: 10s
+      interval: 5s
+      retries: 3
+    labels: 
+      - autoheal=$AUTOHEAL_RESTART
     
   vpn:
     devices:
@@ -1060,13 +1141,13 @@ services:
       TZ: $TIME_ZONE
       DB_MYSQL_HOST: "proxymanagerdb"
       DB_MYSQL_PORT: 3306
-      DB_MYSQL_USER: "npm"
-      DB_MYSQL_PASSWORD: "npm"
-      DB_MYSQL_NAME: "npm"
+      DB_MYSQL_USER: "npmnpm"
+      DB_MYSQL_PASSWORD: "npmnpm"
+      DB_MYSQL_NAME: "npmdb"
     ports:
       - 980:80
       - 981:81
-      - 443:443
+      - 9443:443
     volumes:
       - $PERSIST/proxymanager/data:/data
       - $PERSIST/proxymanager/letsencrypt:/etc/letsencrypt
@@ -1077,20 +1158,20 @@ services:
 
   proxymanagerdb:
     container_name: proxymanagerdb
-    image: 'jc21/mariadb-aria:10.4'
+    image: linuxserver/mariadb
     environment:
-      MYSQL_ROOT_PASSWORD: 'npm'
-      MYSQL_DATABASE: 'npm'
-      MYSQL_USER: 'npm'
-      MYSQL_PASSWORD: 'npm'
+      MYSQL_ROOT_PASSWORD: 'npmnpm'
+      MYSQL_DATABASE: 'npmdb'
+      MYSQL_USER: 'npmnpm'
+      MYSQL_PASSWORD: 'npmnpm'
     volumes:
-      - $PERSIST/proxymanagerdb/data/mysql:/var/lib/mysql
+      - $PERSIST/proxymanagerdb/config:/config
     restart: always
     labels:
       - autoheal
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "--silent"]
-
+      test: ["CMD", "mysqladmin", "ping", "--silent"] 
+      
   radarr4k:
     environment:
       - UMASK_SET=22
@@ -1114,6 +1195,25 @@ services:
       test: ${HEALTH_CHECK_OVERRIDE:-curl -fSs http://127.0.0.1:7878/api/system/status?apikey=}${RADARR4K_API_KEY__SECRET:- }|| exit 1
       start_period: 45s
       timeout: 10s
+      interval: 5s
+      retries: 3
+
+  overseerr:
+    container_name: overseerr
+    restart: unless-stopped
+    image: sctx/overseerr
+    ports:
+      - 5055:3000
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TIME_ZONE
+    volumes:
+      - $PERSIST/overseerr:/app/config
+    labels: 
+      - autoheal=$AUTOHEAL_RESTART
+    healthcheck:
+      test: wget http://127.0.0.1:5055/api/v1/status -qO /dev/null || exit 1
       interval: 5s
       retries: 3
 
@@ -1352,25 +1452,6 @@ services:
   #     - 8056:8056
   #   restart: unless-stopped
 
-  # overseerr:
-  #   container_name: overseerr
-  #   restart: unless-stopped
-  #   image: sctx/overseerr
-  #   ports:
-  #     - 5055:3000
-  #   environment:
-  #     - PUID=$PUID
-  #     - PGID=$PGID
-  #     - TZ=$TIME_ZONE
-  #   volumes:
-  #     - $PERSIST/overseerr:/app/config
-  #   labels: 
-  #     - autoheal=$AUTOHEAL_RESTART
-  #   healthcheck:
-  #     test: wget http://127.0.0.1:5055/api/v1/status -qO /dev/null || exit 1
-  #     interval: 5s
-  #     retries: 3
-
   # #
   # # filezilla
   # #
@@ -1541,22 +1622,19 @@ services:
       - $PERSIST/nginx1/site-content:/usr/share/nginx/html
     image: nginx
 
-  # nginx2:
-  #   environment:
-  #     - PUID=1026
-  #     - PGID=100
-  #     - TZ=Australia/Brisbane
-  #   ports:
-  #     - '80:80'
-  #   container_name: nginx2
-  #   mac_address: 02:42:c0:a8:84:23
-  #   networks: 
-  #     macv_network:
-  #       ipv4_address: 192.168.1.242
-  #   volumes:
-  #     - $PERSIST/nginx2/site-content:/usr/share/nginx/html
-  #   image: nginx
+  nginx2:
+    environment:
+      - PUID=1026
+      - PGID=100
+    ports:
+      - '666:80'
+    container_name: nginx2
+    volumes:
+      - nginx2:/usr/share/nginx/html
+    image: nginx
 
+volumes:
+  nginx2:
 # VOLUMES ####################################################################################
 #volumes:
 #  nextclouddb: 
@@ -1581,4 +1659,3 @@ networks:
       config:
         - subnet: 192.168.1.0/24
           gateway: 192.168.1.1
-
