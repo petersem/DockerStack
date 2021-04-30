@@ -16,6 +16,12 @@ alias prune='sudo docker system prune -a'
 
 # FUNCTIONS ####################################################
 
+# pulls a image and then creates and starts it
+pullup() {
+  pull $1
+  up $1
+}
+
 # Opens a bash shell, given a supplied container name
 #
 term() {
