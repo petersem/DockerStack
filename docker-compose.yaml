@@ -28,7 +28,7 @@
 # 2001      - MovieMatch                  Allows user matching of movies to watch (think Tinder for movies)
 # 34400     - Xteve                       Allows multiple TV guides to be consolidated into one 
 # 8083      - Calibre-web                 E-book browsing and viewing
-# 9876      - Poster                      Plex, sonarr, radarr media display
+# 9876      - Posterr                     Plex, sonarr, radarr media display
 #
 # Photo Management
 # -----------------------------------------------------------------------------------------------------------------
@@ -36,6 +36,7 @@
 # 90        - Lychee                      Photo manager
 # 8282      - Photoshow                   Photo manager
 # 4343      - Chevereto                   Stock image manager
+# 8010      - Papermerge                  Document storage and OCR
 #
 # Collaboration and Synchronisation
 # -----------------------------------------------------------------------------------------------------------------
@@ -82,6 +83,7 @@
 # 8123      - HomeAssistant               Smart home monitoring and management
 # 8181      - Tautulli                    Plex monitoring and statistics
 # 8085      - Domoticz                    Smart home montioring and management
+# 6080      - Scrutiny                    Hard Drive monitoring app
 #
 # Databases
 # -----------------------------------------------------------------------------------------------------------------
@@ -97,6 +99,7 @@
 # -----------------------------------------------------------------------------------------------------------------
 # 5443      - Organizr                    Link / Page manager
 # 2000      - DashMachine                 Link manager
+# 8282      - Homer                       Link / Page manager
 #
 # Information 
 # -----------------------------------------------------------------------------------------------------------------
@@ -111,10 +114,108 @@
 # -----------------------------------------------------------------------------------------------------------------
 # 8008      - Monica                      CRM system
 #
+# Content Creation
+# 2443      - Draw.IO                     Diagram creation app
+# 2368      - Ghost                       Self-hosted blog app
+#
+
 version: '2.4'
 
 # SERVICES ####################################################################################
 services:
+  papermerge:
+    image: ghcr.io/linuxserver/papermerge
+    container_name: papermerge
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=Australia/Brisbane
+      # - REDIS_URL= #optional
+    volumes:
+      - $PERSIST/papermerge/config:/config
+      - $PERSIST/papermerge/data:/data
+    ports:
+      - 8010:8000
+    restart: unless-stopped
+
+  ghost:
+    container_name: ghost
+    image: ghost
+    restart: unless-stopped
+    ports:
+      - 2368:2368
+    environment:
+      # see https://ghost.org/docs/config/#configuration-options
+      database__client: mysql
+      database__connection__host: ghostdb
+      database__connection__user: casper
+      database__connection__password: secret
+      database__connection__database: ghost
+      # this url value is just an example, and is likely wrong for your environment!
+      url: http://192.168.1.135:2368
+      # contrary to the default mentioned in the linked documentation, this image defaults to NODE_ENV=production (so development mode needs to be explicitly specified if desired)
+      #NODE_ENV: development
+    depends_on: 
+      - ghostdb
+
+  ghostdb:
+    image: mysql:5.7
+    container_name: ghostdb
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=Whooo-ooo!
+      - MYSQL_DATABASE=ghost
+      - MYSQL_RANDOM_ROOT_PASSWORD=true
+      - MYSQL_USER=casper
+      - MYSQL_PASSWORD=secret
+    volumes:
+      - $PERSIST/ghostdb:/var/lib/mysql
+
+  scrutiny:
+    image: ghcr.io/linuxserver/scrutiny
+    container_name: scrutiny
+    cap_add:
+      - SYS_RAWIO
+      - SYS_ADMIN #optional
+    privileged: true
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=Australia/Brisbane
+      - SCRUTINY_API_ENDPOINT=http://localhost:8080
+      - SCRUTINY_WEB=true
+      - SCRUTINY_COLLECTOR=true
+    volumes:
+      - $PERSIST/scrutiny:/config
+      - /run/udev:/run/udev:ro
+    ports:
+      - 6080:8080
+    devices:
+      - /dev:/dev
+    restart: unless-stopped
+
+  drawio:
+    image: fjudith/draw.io
+    ports:
+      - 2443:8443
+      - 2080:8080
+    container_name: drawio
+    restart: unless-stopped
+
+  homer:
+    container_name: homer
+    image: b4bz/homer
+    ports:
+      - 8008:80
+    environment:
+      - UID=$PUID
+      - GID=$PGID
+    volumes:
+      - $PERSIST/homer:/www/assets
+    ports:
+      - 8282:8080
+    restart: always
+
   monica:
     container_name: monica
     image: monica
@@ -127,7 +228,7 @@ services:
       - DB_HOST=monicadb
     volumes:
       - $PERSIST/monica:/var/www/html/storage
-    restart: always
+    restart: unless-stopped
   
   monicadb:
     container_name: monicadb
@@ -139,7 +240,7 @@ services:
       - MYSQL_PASSWORD=secret
     volumes:
       - $PERSIST/monicadb:/var/lib/mysql
-    restart: always
+    restart: unless-stopped
   
  # Poster
   poster:
@@ -153,6 +254,7 @@ services:
  #   network_mode: host
     ports:
       - 9876:3000
+    restart: unless-stopped
 
  # Password Manager
   bitwarden:
@@ -383,7 +485,7 @@ services:
       - TZ=$TIME_ZONE
       - HOSTNAME=$HOST_NAME
       - PLEX_CLAIM=$PLEX_CLAIM_TOKEN__SECRET
-      - ADVERTISE_IP="http://192.168.1.135:32400/"
+      - ADVERTISE_IP=$ADVERTISE_IP
       - VERSION=$VERSION
       - ALLOWED_NETWORKS=$ALLOWED_NETWORKS
     labels: 
@@ -1622,19 +1724,25 @@ services:
       - $PERSIST/nginx1/site-content:/usr/share/nginx/html
     image: nginx
 
-  nginx2:
-    environment:
-      - PUID=1026
-      - PGID=100
-    ports:
-      - '666:80'
-    container_name: nginx2
-    volumes:
-      - nginx2:/usr/share/nginx/html
-    image: nginx
+  # nginx2:
+  #   environment:
+  #     - PUID=1026
+  #     - PGID=100
+  #     - TZ=Australia/Brisbane
+  #   ports:
+  #     - '80:80'
+  #   container_name: nginx2
+  #   mac_address: 02:42:c0:a8:84:23
+  #   networks: 
+  #     macv_network:
+  #       ipv4_address: 192.168.1.242
+  #   volumes:
+  #     - $PERSIST/nginx2/site-content:/usr/share/nginx/html
+  #   image: nginx
 
-volumes:
-  nginx2:
+#volumes:
+#  nginx2:
+
 # VOLUMES ####################################################################################
 #volumes:
 #  nextclouddb: 
