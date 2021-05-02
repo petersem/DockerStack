@@ -1315,7 +1315,7 @@ services:
     labels: 
       - autoheal=$AUTOHEAL_RESTART
     healthcheck:
-      test: wget http://127.0.0.1:5055/api/v1/status -qO /dev/null || exit 1
+      test: wget http://127.0.0.1:3000/api/v1/status -qO /dev/null || exit 1
       interval: 5s
       retries: 3
 
