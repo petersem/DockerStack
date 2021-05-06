@@ -15,6 +15,11 @@ alias start='sudo docker start'
 alias prune='sudo docker system prune -a'
 
 # FUNCTIONS ####################################################
+# Restarts a container
+cycle() {
+  stop $1
+  start $1
+}
 
 # pulls a image and then creates and starts it
 pullup() {
