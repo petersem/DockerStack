@@ -6,7 +6,7 @@
 #
 #
 # Networking & Security
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 9443,980  - Nginx Proxy Manager         Reverse proxy app with LetsEncrypt included 
 # As needed - VPN                         OpenVpn client - used for torrent-related activities
 # As needed - VPNPrivoxy                  OpenVPN client - used for web proxy 'privoxy' for bypassing geo-block
@@ -14,13 +14,13 @@
 # 80        - Nginx1                      Basic web server
 # 80        - Nginx2                      Basic web server
 # 8383      - LibreSpeed                  Server to device speed test utility
-# 680, 6443 - Pi-Hole                     Ad blocker and DHCP
+# 80, 6443  - Pi-Hole (with unbound)      Ad blocker and DHCP, using unbound dns lookup
 # -         - DuckDNS                     Dynamic DNS updater for DuckDNS
 # 8118      - Privoxy                     Web proxy server, using VPNPrivoxy for accessing geo-blocked web sites
-# 8089      - Btiwarden                   Passowrd management application 
+# 8089      - VaultWarden                 Passowrd management application 
 #
 # Media Playing or Provisioning 
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 32400     - Plex Media Server           Media server
 # 8096      - JellyFin                    Media server
 # 8056      - jfa-go                      JellyFin managent tool
@@ -28,10 +28,10 @@
 # 2001      - MovieMatch                  Allows user matching of movies to watch (think Tinder for movies)
 # 34400     - Xteve                       Allows multiple TV guides to be consolidated into one 
 # 8083      - Calibre-web                 E-book browsing and viewing
-# 9876      - Posterr                     Plex, sonarr, radarr media display
+# 9876      - Poster                      Plex, sonarr, radarr media display
 #
 # Photo Management
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 880       - Pwigo                       Self-hosted image manager
 # 90        - Lychee                      Photo manager
 # 8282      - Photoshow                   Photo manager
@@ -39,7 +39,7 @@
 # 8010      - Papermerge                  Document storage and OCR
 #
 # Collaboration and Synchronisation
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 8384      - SyncThing                   Synchronisation of files between devices
 # 9001      - TheLounge                   IRC Client
 # 6875      - BookStack                   Shared documentation hub
@@ -47,7 +47,7 @@
 # 2525      - Privatebin                  Pastebin alternative
 #
 # Media Gathering
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 8989      - Sonarr                      Search for TV shows
 # 7878      - Radarr                      Search for movies
 # 7879      - Radarr4k                    Search for 4k movies
@@ -67,16 +67,17 @@
 # 8484      - Gaps                        Plex missing media searcher
 # 6789      - NzbGet                      Usenet downloader
 # 8282      - Rutorrent                   Torrent download app
+# 8800      - Alltube                     Youtube downloader
 #
 # Docker Related
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # -         - Watchtower                  Update containers with latest images
 # -         - Autoheal                    Restarts unhealthy containers
 # 9000      - Portainer                   Docker management tool
 # 9999      - Dozzle                      Container log aggregator
 #
 # System Monitoring & Management
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 19999     - Netdata                     Monitors and presents graphs for system attributes
 # 88        - Monitorr                    Web page monitor
 # 8082      - NextCloud                   Collaboration platform
@@ -86,32 +87,32 @@
 # 6080      - Scrutiny                    Hard Drive monitoring app
 #
 # Databases
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 3306      - MariaDB                     MariaDB Database(MySQL Clone)
 # 3306      - MySQL                       MySQL Database
 # 3001      - MySQLWorkBench              Client query tool for MySQL and MariaDB databases
 #
 # Programming
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 1880      - Node-Red                    Develop code for linking smart devices
 #
 # Link / Page Organisation
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 5443      - Organizr                    Link / Page manager
 # 2000      - DashMachine                 Link manager
 # 8282      - Homer                       Link / Page manager
 #
 # Information 
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 8585      - FreshRSS                    RSS Feed
 # 5555      - MagicMirror                 Magic mirror presentation software
 #
 # Gaming 
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 1234      - OpenRA                      Open Red Alert game server
 #
 # CRM 
-# -----------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------
 # 8008      - Monica                      CRM system
 #
 # Content Creation
@@ -120,9 +121,59 @@
 #
 
 version: '2.4'
+# VOLUMES #
+#volumes:
+  # cifs: #use this if running docker on windows and needing to map a cifs network drive
+  #   driver: local
+  #   driver_opts:
+  #     type: cifs
+  #     o: username=(username),password=(password),rw,domain=(domainname),uid=1000,gid=1000
+  #     device: "\\\\(ipaddress)\\shared"
 
-# SERVICES ####################################################################################
+# VOLUMES #
+#volumes:
+#  nginx2:
+
+# NETWORKS #
+networks:
+  # # Cant use ip ranges yet. hopefully coming in a future release
+  macv_network:
+    driver: macvlan
+    driver_opts:
+      parent: $ETHCARD  
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.1.0/24
+          gateway: 192.168.1.1
+
+# SERVICES #
 services:
+  # Exportarr
+  exportarr:
+    container_name: exportarr
+    image: petersem/exportarr
+    environment:
+      NODE_ENV: production
+      TOKEN: "xyzzy"
+      RADARR_URL: "http://192.168.1.135:7878"
+      RADARR_TOKEN: "e3e5cdbef05a4808a219f20c1d869da6"
+    ports:
+      - 1234:3000
+
+  # Alltube
+  alltube:
+    image: rudloff/alltube
+    container_name: alltube
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TIME_ZONE
+    ports:
+      - 8800:80
+    restart: unless-stopped
+    
+  # Papermerge
   papermerge:
     image: ghcr.io/linuxserver/papermerge
     container_name: papermerge
@@ -138,6 +189,7 @@ services:
       - 8010:8000
     restart: unless-stopped
 
+  # Ghost
   ghost:
     container_name: ghost
     image: ghost
@@ -158,6 +210,7 @@ services:
     depends_on: 
       - ghostdb
 
+  # Ghost Database
   ghostdb:
     image: mysql:5.7
     container_name: ghostdb
@@ -171,6 +224,7 @@ services:
     volumes:
       - $PERSIST/ghostdb:/var/lib/mysql
 
+  # Scrutiny
   scrutiny:
     image: ghcr.io/linuxserver/scrutiny
     container_name: scrutiny
@@ -194,6 +248,7 @@ services:
       - /dev:/dev
     restart: unless-stopped
 
+  # draw.io
   drawio:
     image: fjudith/draw.io
     ports:
@@ -202,6 +257,7 @@ services:
     container_name: drawio
     restart: unless-stopped
 
+  # Homer
   homer:
     container_name: homer
     image: b4bz/homer
@@ -216,6 +272,7 @@ services:
       - 8282:8080
     restart: always
 
+  # monica
   monica:
     container_name: monica
     image: monica
@@ -230,6 +287,7 @@ services:
       - $PERSIST/monica:/var/www/html/storage
     restart: unless-stopped
   
+  # monica database
   monicadb:
     container_name: monicadb
     image: mysql:5.7
@@ -242,7 +300,7 @@ services:
       - $PERSIST/monicadb:/var/lib/mysql
     restart: unless-stopped
   
- # Poster
+  # Poster
   poster:
     image: petersem/poster
     container_name: poster
@@ -251,26 +309,25 @@ services:
     volumes:
       - $PERSIST/poster/randomthemes:/usr/src/app/public/randomthemes
       - $PERSIST/poster/config:/usr/src/app/config
- #   network_mode: host
     ports:
       - 9876:3000
     restart: unless-stopped
 
- # Password Manager
-  bitwarden:
-    container_name: bitwarden
-    image: bitwardenrs/server
+  # Password Manager
+  vaultwarden:
+    container_name: vaultwarden
+    image: vaultwarden/server
     restart: always
     volumes:
-      - $PERSIST/bitwarden/data:/data
-      - $PERSIST/bitwarden/ssl:/ssl
+      - $PERSIST/vaultwarden/data:/data
+      - $PERSIST/vaultwarden/ssl:/ssl
       - /etc/localtime:/etc/localtime:ro
     ports:
       - 8089:8089
       - 3012:3012
     user: $PUID:$PGID
     environment:
-      - LOG_FILE=/data/bitwarden.log
+      - LOG_FILE=/data/vaultwarden.log
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TIME_ZONE
@@ -279,7 +336,7 @@ services:
       - INVITATIONS_ALLOWED=true
       - LOG_LEVEL=warn
       - EXTENDED_LOGGING=true
-      - DOMAIN=https://bw.$DOMAIN
+      - DOMAIN=https://bw.$DOMAINNAME
       - ROCKET_PORT=8089
       - WEBSOCKET_ENABLED=true
       - ADMIN_TOKEN=$BW_TOKEN__SECRET
@@ -349,7 +406,7 @@ services:
     expose: 
       - 3306
     volumes:
-      - $PERSIST/piwigodb:/var/lib/mysql
+      - $PERSIST/piwigodb:/config
     restart: unless-stopped
     labels:
       - autoheal
@@ -847,34 +904,39 @@ services:
 
   pihole:
     container_name: pihole
-    image: pihole/pihole
-    hostname: pihole
+    image: cbcrowe/pihole-unbound:latest
+    hostname: ${HOSTNAME}
+    domainname: ${LAN_DOMAIN_NAME}
     cap_add:
       - NET_ADMIN
     dns:
       - 127.0.0.1
       - 1.1.1.1
     ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-      - "67:67/udp"
-      - "80:80/tcp"
-      - "6443:443/tcp"
-    labels: 
-      - autoheal=$AUTOHEAL_RESTART
+      - 6443:443/tcp
+      - 53:53/tcp
+      - 53:53/udp
+      - 80:80/tcp
+      - 22/tcp # Uncomment to enable SSH
     environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-      - WEBPASSWORD=$PH_PSW__SECRET
-      - ServerIP=$PH_SVR_IP
-      - DNS1=$PH_DNS_1
-      - DNS2=$PH_DNS_2
-      - TEMPERATUREUNIT=c
-      - ADMIN_EMAIL=$GM_USER__SECRET
+      ServerIP: $PH_SVR_IP
+      TZ: $TIME_ZONE
+      WEBPASSWORD: $PH_PSW__SECRET
+      REV_SERVER: ${REV_SERVER}
+      REV_SERVER_TARGET: ${REV_SERVER_TARGET}
+      REV_SERVER_DOMAIN: ${REV_SERVER_DOMAIN}
+      REV_SERVER_CIDR: ${REV_SERVER_CIDR}
+      DNS1: 127.0.0.1#5335 # Hardcoded to our Unbound server
+      DNS2: 127.0.0.1#5335 # Hardcoded to our Unbound server
+      DNSSEC: "true" # Enable DNSSEC
+      TEMPERATUREUNIT: c
+      ADMIN_EMAIL: $GM_USER__SECRET
     volumes:
       - '$PERSIST/pihole/etc-pihole/:/etc/pihole'
       - '$PERSIST/pihole/etc-dnsmasq.d/:/etc/dnsmasq.d'
+    restart: unless-stopped
+    labels: 
+      - autoheal=$AUTOHEAL_RESTART
     healthcheck:
       test: curl -fSs http://127.0.0.1:80 || exit 1
       start_period: 15s
@@ -882,7 +944,7 @@ services:
       interval: 15s
       retries: 3
     restart: unless-stopped
-    
+
   calibre:
     image: linuxserver/calibre
     container_name: calibre
@@ -933,7 +995,6 @@ services:
     restart: unless-stopped
 
   bazarr:
-    domainname: foo.com
     image: linuxserver/bazarr
     container_name: bazarr
     environment:
@@ -1234,22 +1295,24 @@ services:
       - $PERSIST/openvpn:/vpn
     command: -f ""
 
+
+    
   proxymanager:
-    container_name: proxy-manager
+    container_name: proxymanager
     image: jc21/nginx-proxy-manager
     environment:
       PUID: $PUID
       PGID: $PGID
       TZ: $TIME_ZONE
-      DB_MYSQL_HOST: "proxymanagerdb"
+      DB_MYSQL_HOST: 'proxymanagerdb'
       DB_MYSQL_PORT: 3306
-      DB_MYSQL_USER: "npmnpm"
-      DB_MYSQL_PASSWORD: "npmnpm"
-      DB_MYSQL_NAME: "npmdb"
+      DB_MYSQL_USER: 'smileyfaceemoji'
+      DB_MYSQL_PASSWORD: 'sadfaceemoji'
+      DB_MYSQL_NAME: 'npm'
     ports:
-      - 980:80
+      - 980:80 # use a different local port if on synology
       - 981:81
-      - 9443:443
+      - 443:443 # use a different local port if on synology
     volumes:
       - $PERSIST/proxymanager/data:/data
       - $PERSIST/proxymanager/letsencrypt:/etc/letsencrypt
@@ -1260,12 +1323,12 @@ services:
 
   proxymanagerdb:
     container_name: proxymanagerdb
-    image: linuxserver/mariadb
+    image: ghcr.io/linuxserver/mariadb
     environment:
-      MYSQL_ROOT_PASSWORD: 'npmnpm'
-      MYSQL_DATABASE: 'npmdb'
-      MYSQL_USER: 'npmnpm'
-      MYSQL_PASSWORD: 'npmnpm'
+      MYSQL_ROOT_PASSWORD: 'poopemoji'
+      MYSQL_DATABASE: 'npm'
+      MYSQL_USER: 'smileyfaceemoji'
+      MYSQL_PASSWORD: 'sadfaceemoji'
     volumes:
       - $PERSIST/proxymanagerdb/config:/config
     restart: always
@@ -1273,7 +1336,7 @@ services:
       - autoheal
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "--silent"] 
-      
+
   radarr4k:
     environment:
       - UMASK_SET=22
@@ -1305,7 +1368,7 @@ services:
     restart: unless-stopped
     image: sctx/overseerr
     ports:
-      - 5055:3000
+      - 5055:5055
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -1323,6 +1386,46 @@ services:
 ###### Not frequently in use but kept for examples    #####
 ###### Will soon move to a seperate archive yaml file #####
 ###########################################################
+# filerun:
+#   image: afian/filerun
+#   container_name: filerun
+#   environment:
+#     TZ: $TIME_ZONE
+#     FR_DB_HOST: filerundb
+#     FR_DB_PORT: 3306
+#     FR_DB_NAME: filerun
+#     FR_DB_USER: 'sm1l3yf@c3em0j!'
+#     FR_DB_PASS: 's@df@c33m0j!'
+#     APACHE_RUN_USER: www-data
+#     APACHE_RUN_USER_ID: 33
+#     APACHE_RUN_GROUP: www-data
+#     APACHE_RUN_GROUP_ID: 33
+#   depends_on:
+#     filerundb:
+#       condition: service_healthy
+#   ports:
+#     - "8088:80"
+#   volumes:
+#     - ${PERSIST}/filerun/html:/var/www/html
+#     - ${PERSIST}/filerun/user-files:/user-files
+
+# # filerundb
+# filerundb:
+#   container_name: filerundb
+#   image: ghcr.io/linuxserver/mariadb
+#   environment:
+#     TZ: $TIME_ZONE
+#     MYSQL_ROOT_PASSWORD: 'p00p3m0j!'
+#     MYSQL_DATABASE: 'filerun'
+#     MYSQL_USER: 'sm1l3yf@c3em0j!'
+#     MYSQL_PASSWORD: 's@df@c33m0j!'
+#   volumes:
+#     - $PERSIST/filerundb:/config
+#   restart: always
+#   labels:
+#     - autoheal
+#   healthcheck:
+#     test: ["CMD", "mysqladmin", "ping", "--silent"] 
   # nzbget:
   #   image: ghcr.io/linuxserver/nzbget
   #   container_name: nzbget
@@ -1739,31 +1842,3 @@ services:
   #   volumes:
   #     - $PERSIST/nginx2/site-content:/usr/share/nginx/html
   #   image: nginx
-
-#volumes:
-#  nginx2:
-
-# VOLUMES ####################################################################################
-#volumes:
-#  nextclouddb: 
-  
-  # cifs: #use this if running docker on windows and needing to map a cifs network drive
-  #   driver: local
-  #   driver_opts:
-  #     type: cifs
-  #     o: username=(username),password=(password),rw,domain=(domainname),uid=1000,gid=1000
-  #     device: "\\\\(ipaddress)\\shared"
-
- 
-# NETWORKS #################################################################################### 
-networks:
-  # # Cant use ip ranges yet. hopefully coming in a future release
-  macv_network:
-    driver: macvlan
-    driver_opts:
-      parent: $ETHCARD  
-    ipam:
-      driver: default
-      config:
-        - subnet: 192.168.1.0/24
-          gateway: 192.168.1.1
