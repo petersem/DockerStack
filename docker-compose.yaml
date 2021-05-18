@@ -30,13 +30,14 @@
 # 8083      - Calibre-web                 E-book browsing and viewing
 # 9876      - Poster                      Plex, sonarr, radarr media display
 #
-# Photo Management
+# Photo/Video Management
 # ------------------------------------------------------------
 # 880       - Pwigo                       Self-hosted image manager
 # 90        - Lychee                      Photo manager
 # 8282      - Photoshow                   Photo manager
 # 4343      - Chevereto                   Stock image manager
 # 8010      - Papermerge                  Document storage and OCR
+# 6969      - Stash                       Video collection manager
 #
 # Collaboration and Synchronisation
 # ------------------------------------------------------------
@@ -85,6 +86,7 @@
 # 8181      - Tautulli                    Plex monitoring and statistics
 # 8085      - Domoticz                    Smart home montioring and management
 # 6080      - Scrutiny                    Hard Drive monitoring app
+# 5050      - ChangeDetection             Web site monitoring app
 #
 # Databases
 # ------------------------------------------------------------
@@ -149,7 +151,19 @@ networks:
 
 # SERVICES #
 services:
-  # Exportarr
+  changedetection:
+    container_name: changedetection
+    image: dgtlmoon/changedetection.io
+    ports:
+      - "5050:5000"
+    environment:
+      - TZ=$TIME_ZONE
+    volumes:
+      - $PERSIST/changedetection:/datastore
+    restart: unless-stopped
+ 
+   # Exportarr
+  # Open app with http://hostIP:1234?token=xyzzy
   exportarr:
     container_name: exportarr
     image: petersem/exportarr
@@ -157,7 +171,7 @@ services:
       NODE_ENV: production
       TOKEN: "xyzzy"
       RADARR_URL: "http://192.168.1.135:7878"
-      RADARR_TOKEN: "e3e5cdbef05a4808a219f20c1d869da6"
+      RADARR_TOKEN: $RADARR_API_KEY__SECRET
     ports:
       - 1234:3000
 
@@ -474,7 +488,7 @@ services:
       - PGID=$PGID
       - TZ=$TIME_ZONE
     ports:
-      - 5555:5555
+      - 5555:8080
 
   syncthing: 
     container_name: syncthing
@@ -664,7 +678,6 @@ services:
       # WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT: $GM_PORT
       # WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER: $GM_USER__SECRET
       # WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD: $GM_PSW__SECRET
-
     restart: always
 
   radarr:
@@ -980,20 +993,6 @@ services:
       - '/var/run/docker.sock:/var/run/docker.sock'
     image: willfarrell/autoheal
 
-  duckdns:
-    image: linuxserver/duckdns
-    container_name: duckdns
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TIME_ZONE
-      - SUBDOMAINS=$DUCKSUBDOMS__SECRET
-      - TOKEN=$DUCKTOKEN__SECRET
-      - LOG_FILE=true #optional
-    volumes:
-      - $PERSIST/duckdns:/config #optional - use if log_file true
-    restart: unless-stopped
-
   bazarr:
     image: linuxserver/bazarr
     container_name: bazarr
@@ -1054,6 +1053,7 @@ services:
       - DB_DATABASE=$BSDB
       - APP_URL=$BSBASEURL
       - APP_THEME=custom
+      - APP_DEFAULT_DARK_MODE=true
       #- APP_DEBUG=true
       #- WKHTMLTOPDF=/usr/bin/wkhtmltopdf
     volumes:
@@ -1294,8 +1294,6 @@ services:
     volumes:
       - $PERSIST/openvpn:/vpn
     command: -f ""
-
-
     
   proxymanager:
     container_name: proxymanager
@@ -1386,6 +1384,34 @@ services:
 ###### Not frequently in use but kept for examples    #####
 ###### Will soon move to a seperate archive yaml file #####
 ###########################################################
+  # duckdns:
+  #   image: linuxserver/duckdns
+  #   container_name: duckdns
+  #   environment:
+  #     - PUID=$PUID
+  #     - PGID=$PGID
+  #     - TZ=$TIME_ZONE
+  #     - SUBDOMAINS=$DUCKSUBDOMS__SECRET
+  #     - TOKEN=$DUCKTOKEN__SECRET
+  #     - LOG_FILE=true #optional
+  #   volumes:
+  #     - $PERSIST/duckdns:/config #optional - use if log_file true
+  #   restart: unless-stopped
+
+  # stash:
+#   container_name: stash
+#   image: hotio/stash
+#   ports:
+#     - "6969:9999"
+#   environment:
+#     - PUID=$PUID
+#     - PGID=$PGID
+#     - UMASK=002
+#     - TZ=$TIME_ZONE
+#   volumes:
+#     - $PERSIST/stash:/config
+#     - $MEDIA_PATH/musicvids:/musicvids
+
 # filerun:
 #   image: afian/filerun
 #   container_name: filerun
@@ -1842,3 +1868,6 @@ services:
   #   volumes:
   #     - $PERSIST/nginx2/site-content:/usr/share/nginx/html
   #   image: nginx
+
+
+  
